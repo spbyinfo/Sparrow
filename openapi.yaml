@@ -1,0 +1,1665 @@
+openapi: 3.0.3
+info:
+  title: Sparrow API
+  description: |
+    Gamified waste collection app API for weekly bingo games, credits management, 
+    partner business reservations, and user profile management.
+    
+    **Authentication**: All protected endpoints require Bearer token in Authorization header.
+    
+    **Base URL**: `https://ozgamxpyalkeogkgpioj.supabase.co/functions/v1/make-server-efcc1648`
+  version: 1.0.0
+  contact:
+    name: Sparrow API Support
+    email: api@sparrow.app
+
+servers:
+  - url: https://ozgamxpyalkeogkgpioj.supabase.co/functions/v1/make-server-efcc1648
+    description: Production Server (Supabase Edge Function)
+  - url: http://localhost:54321/functions/v1/make-server-efcc1648
+    description: Local Development Server
+
+tags:
+  - name: Auth
+    description: Authentication and authorization endpoints
+  - name: Bingo
+    description: Weekly bingo card management and scanning
+  - name: Credits
+    description: Credit balance, transactions, and redemption
+  - name: Pass
+    description: Partner businesses and reservations
+  - name: Profile
+    description: User profile and settings management
+
+paths:
+  # ==================== AUTH ENDPOINTS ====================
+  /auth/signup:
+    post:
+      tags:
+        - Auth
+      summary: Create new user account
+      description: Register a new user with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - phone
+                - password
+                - location
+              properties:
+                name:
+                  type: string
+                  example: "Rajesh Kumar"
+                email:
+                  type: string
+                  format: email
+                  example: "rajesh@example.com"
+                phone:
+                  type: string
+                  example: "+919876543210"
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: "SecurePass123!"
+                location:
+                  type: string
+                  example: "mumbai"
+                referralCode:
+                  type: string
+                  example: "FRIEND50"
+      responses:
+        '200':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  userId:
+                    type: string
+                    example: "user_abc123"
+                  accessToken:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  refreshToken:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+                  message:
+                    type: string
+                    example: "Welcome to Sparrow!"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/signin:
+    post:
+      tags:
+        - Auth
+      summary: Sign in existing user
+      description: Authenticate user with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "rajesh@example.com"
+                password:
+                  type: string
+                  format: password
+                  example: "SecurePass123!"
+      responses:
+        '200':
+          description: Sign in successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/guest:
+    post:
+      tags:
+        - Auth
+      summary: Create guest session
+      description: Create temporary guest session for browsing without signup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - deviceId
+              properties:
+                deviceId:
+                  type: string
+                  example: "device_xyz789"
+                location:
+                  type: string
+                  example: "mumbai"
+      responses:
+        '200':
+          description: Guest session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  guestId:
+                    type: string
+                  accessToken:
+                    type: string
+                  expiresAt:
+                    type: string
+                    format: date-time
+                  limitations:
+                    type: object
+                    properties:
+                      canScan:
+                        type: boolean
+                        example: false
+                      canRedeemCredits:
+                        type: boolean
+                        example: false
+                      message:
+                        type: string
+                        example: "Sign up to unlock all features"
+
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: Refresh access token
+      description: Get new access token using refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==================== BINGO ENDPOINTS ====================
+  /bingo/active-card:
+    get:
+      tags:
+        - Bingo
+      summary: Get active bingo card
+      description: Fetch current week's bingo card for authenticated user
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Active bingo card retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BingoCard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: No active card found
+
+  /bingo/scan:
+    post:
+      tags:
+        - Bingo
+      summary: Scan product SKU
+      description: Register a product scan via barcode/QR code
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cardId
+                - sku
+                - scannedAt
+              properties:
+                cardId:
+                  type: string
+                  example: "card_week_46_2025"
+                sku:
+                  type: string
+                  example: "SKU8734"
+                scannedAt:
+                  type: string
+                  format: date-time
+                location:
+                  type: object
+                  properties:
+                    lat:
+                      type: number
+                      example: 19.0760
+                    lng:
+                      type: number
+                      example: 72.8777
+      responses:
+        '200':
+          description: Product scanned successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  product:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      sku:
+                        type: string
+                      name:
+                        type: string
+                      credits:
+                        type: number
+                  creditsEarned:
+                    type: number
+                    example: 50
+                  newTotalCredits:
+                    type: number
+                    example: 2500
+                  scannedCount:
+                    type: number
+                    example: 4
+                  isCardComplete:
+                    type: boolean
+                    example: false
+                  bonusEarned:
+                    type: number
+                    example: 100
+        '400':
+          description: Already scanned or invalid SKU
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum: [ALREADY_SCANNED, INVALID_SKU]
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /bingo/history:
+    get:
+      tags:
+        - Bingo
+      summary: Get bingo card history
+      description: Fetch user's past bingo cards with pagination
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Number of cards to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Pagination offset
+      responses:
+        '200':
+          description: Bingo history retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cards:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BingoCardSummary'
+                  totalCards:
+                    type: integer
+                  hasMore:
+                    type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==================== CREDITS ENDPOINTS ====================
+  /credits/balance:
+    get:
+      tags:
+        - Credits
+      summary: Get credit balance
+      description: Get current credit balance and user stats
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Credit balance retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId:
+                    type: string
+                  balance:
+                    type: number
+                    example: 2450
+                  currency:
+                    type: string
+                    example: "credits"
+                  valueInINR:
+                    type: number
+                    example: 2450
+                  lifetimeEarned:
+                    type: number
+                    example: 5600
+                  lifetimeRedeemed:
+                    type: number
+                    example: 3150
+                  rank:
+                    type: string
+                    example: "Gold Recycler"
+                  nextRankAt:
+                    type: number
+                    example: 5000
+                  achievements:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Achievement'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /credits/redemption-options:
+    get:
+      tags:
+        - Credits
+      summary: Get redemption options
+      description: Fetch available methods to redeem credits
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Redemption options retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  options:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RedemptionOption'
+
+  /credits/redeem:
+    post:
+      tags:
+        - Credits
+      summary: Redeem credits
+      description: Redeem credits via UPI, bank transfer, or vouchers
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - optionId
+                - amount
+                - details
+              properties:
+                optionId:
+                  type: string
+                  example: "upi_transfer"
+                amount:
+                  type: number
+                  example: 1000
+                details:
+                  type: object
+                  properties:
+                    upiId:
+                      type: string
+                      example: "user@paytm"
+                    accountNumber:
+                      type: string
+                    ifscCode:
+                      type: string
+                    accountHolderName:
+                      type: string
+                    email:
+                      type: string
+      responses:
+        '200':
+          description: Redemption successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  transactionId:
+                    type: string
+                  amountRedeemed:
+                    type: number
+                  newBalance:
+                    type: number
+                  estimatedDelivery:
+                    type: string
+                  status:
+                    type: string
+                    enum: [pending, processing, completed]
+        '400':
+          description: Insufficient credits or invalid details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum: [INSUFFICIENT_CREDITS, INVALID_DETAILS, BELOW_MINIMUM]
+                  message:
+                    type: string
+
+  /credits/transactions:
+    get:
+      tags:
+        - Credits
+      summary: Get transaction history
+      description: Fetch credit transaction history with filtering
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [all, earned, redeemed]
+            default: all
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Transaction history retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transactions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Transaction'
+                  totalCount:
+                    type: integer
+                  hasMore:
+                    type: boolean
+
+  /credits/earning-opportunities:
+    get:
+      tags:
+        - Credits
+      summary: Get earning opportunities
+      description: Suggest ways for user to earn more credits
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Opportunities retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  opportunities:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EarningOpportunity'
+
+  # ==================== PASS ENDPOINTS ====================
+  /pass/partners:
+    get:
+      tags:
+        - Pass
+      summary: Get partner businesses
+      description: Fetch nearby partner businesses with available items
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: location
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "mumbai"
+        - name: radius
+          in: query
+          schema:
+            type: number
+            default: 5
+          description: Search radius in kilometers
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [restaurant, bakery, grocery, all]
+        - name: availability
+          in: query
+          schema:
+            type: boolean
+          description: Only show partners with available items
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Partners retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  partners:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Partner'
+                  totalCount:
+                    type: integer
+                  hasMore:
+                    type: boolean
+                  filters:
+                    type: object
+                    properties:
+                      categories:
+                        type: array
+                        items:
+                          type: string
+                      availableTags:
+                        type: array
+                        items:
+                          type: string
+
+  /pass/inventory/{partnerId}:
+    get:
+      tags:
+        - Pass
+      summary: Get partner inventory
+      description: Get available items from specific partner
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: partnerId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "partner_123"
+      responses:
+        '200':
+          description: Inventory retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  partnerId:
+                    type: string
+                  partnerName:
+                    type: string
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryItem'
+                  pickupInstructions:
+                    type: string
+                  cancellationPolicy:
+                    type: string
+        '404':
+          description: Partner not found
+
+  /pass/reserve:
+    post:
+      tags:
+        - Pass
+      summary: Reserve an item
+      description: Create a reservation for a surprise bag or specific item
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - partnerId
+                - itemId
+                - quantity
+                - pickupTime
+                - paymentMethod
+              properties:
+                partnerId:
+                  type: string
+                  example: "partner_123"
+                itemId:
+                  type: string
+                  example: "item_789"
+                quantity:
+                  type: number
+                  example: 1
+                pickupTime:
+                  type: string
+                  format: date-time
+                paymentMethod:
+                  type: string
+                  enum: [credits, card, upi]
+                paymentDetails:
+                  type: object
+                  properties:
+                    creditsToUse:
+                      type: number
+      responses:
+        '200':
+          description: Reservation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '400':
+          description: Item unavailable or insufficient credits
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum: [ITEM_UNAVAILABLE, INSUFFICIENT_CREDITS, INVALID_PICKUP_TIME]
+                  message:
+                    type: string
+
+  /pass/reservations:
+    get:
+      tags:
+        - Pass
+      summary: Get user reservations
+      description: Fetch user's reservation history
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, past, cancelled, all]
+            default: all
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Reservations retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reservations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ReservationSummary'
+                  activeCount:
+                    type: integer
+                  totalCount:
+                    type: integer
+                  hasMore:
+                    type: boolean
+
+  /pass/cancel-reservation:
+    post:
+      tags:
+        - Pass
+      summary: Cancel reservation
+      description: Cancel an existing reservation
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reservationId
+              properties:
+                reservationId:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Reservation cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  reservationId:
+                    type: string
+                  refundAmount:
+                    type: number
+                  refundedCredits:
+                    type: number
+                  message:
+                    type: string
+
+  /pass/suggest-business:
+    post:
+      tags:
+        - Pass
+      summary: Suggest partner business
+      description: Submit suggestion for new partner business
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - businessName
+                - category
+                - address
+                - city
+                - reason
+              properties:
+                businessName:
+                  type: string
+                category:
+                  type: string
+                address:
+                  type: string
+                city:
+                  type: string
+                contactPerson:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Suggestion submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  suggestionId:
+                    type: string
+                  message:
+                    type: string
+
+  # ==================== PROFILE ENDPOINTS ====================
+  /profile/me:
+    get:
+      tags:
+        - Profile
+      summary: Get user profile
+      description: Get authenticated user's profile information
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /profile/update:
+    put:
+      tags:
+        - Profile
+      summary: Update profile
+      description: Update user profile information
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                avatar:
+                  type: string
+                  description: Base64 encoded image or URL
+                location:
+                  type: object
+                  properties:
+                    city:
+                      type: string
+                preferences:
+                  type: object
+                  properties:
+                    notifications:
+                      type: boolean
+                    emailUpdates:
+                      type: boolean
+                    language:
+                      type: string
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  user:
+                    $ref: '#/components/schemas/UserProfile'
+
+  /profile/kyc/submit:
+    post:
+      tags:
+        - Profile
+      summary: Submit KYC documents
+      description: Submit Aadhaar and PAN for verification
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - aadhaarNumber
+                - panNumber
+                - documents
+                - consentGiven
+              properties:
+                aadhaarNumber:
+                  type: string
+                  pattern: '^\d{12}$'
+                  example: "123456789012"
+                panNumber:
+                  type: string
+                  pattern: '^[A-Z]{5}[0-9]{4}[A-Z]$'
+                  example: "ABCDE1234F"
+                documents:
+                  type: object
+                  properties:
+                    aadhaarFront:
+                      type: string
+                      description: Base64 encoded image
+                    aadhaarBack:
+                      type: string
+                    panCard:
+                      type: string
+                consentGiven:
+                  type: boolean
+      responses:
+        '200':
+          description: KYC submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  kycId:
+                    type: string
+                  status:
+                    type: string
+                    enum: [pending]
+                  message:
+                    type: string
+                  estimatedReviewTime:
+                    type: string
+        '400':
+          description: Invalid documents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum: [INVALID_AADHAAR, INVALID_PAN, DOCUMENTS_REQUIRED]
+                  message:
+                    type: string
+
+  /profile/settings:
+    get:
+      tags:
+        - Profile
+      summary: Get user settings
+      description: Retrieve all user settings
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Settings retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSettings'
+
+  /profile/settings:
+    put:
+      tags:
+        - Profile
+      summary: Update settings
+      description: Update user settings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSettings'
+      responses:
+        '200':
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  settings:
+                    $ref: '#/components/schemas/UserSettings'
+
+  /profile/logout:
+    post:
+      tags:
+        - Profile
+      summary: Logout user
+      description: Invalidate current session
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+
+  /profile/delete-account:
+    delete:
+      tags:
+        - Profile
+      summary: Delete account
+      description: Permanently delete user account
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+                - confirmPhrase
+              properties:
+                password:
+                  type: string
+                reason:
+                  type: string
+                confirmPhrase:
+                  type: string
+                  example: "DELETE MY ACCOUNT"
+      responses:
+        '200':
+          description: Account deletion scheduled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  scheduledDeletionDate:
+                    type: string
+                    format: date-time
+
+# ==================== COMPONENTS ====================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from /auth/signin or /auth/signup endpoints.
+        Include in Authorization header as: `Bearer <token>`
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        avatar:
+          type: string
+        location:
+          type: object
+          properties:
+            city:
+              type: string
+            region:
+              type: string
+            country:
+              type: string
+        kycStatus:
+          type: string
+          enum: [not_started, pending, verified, rejected]
+        isGuest:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    UserProfile:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            kycDetails:
+              type: object
+              properties:
+                aadhaar:
+                  type: string
+                  example: "XXXX XXXX 1234"
+                pan:
+                  type: string
+                  example: "XXXXX1234X"
+                verifiedAt:
+                  type: string
+                  format: date-time
+                rejectionReason:
+                  type: string
+            stats:
+              type: object
+              properties:
+                totalCreditsEarned:
+                  type: number
+                totalItemsScanned:
+                  type: number
+                bingoCardsCompleted:
+                  type: number
+                co2Saved:
+                  type: number
+                plasticRecycled:
+                  type: number
+                joinedAt:
+                  type: string
+                  format: date-time
+                rank:
+                  type: string
+            preferences:
+              type: object
+              properties:
+                notifications:
+                  type: boolean
+                emailUpdates:
+                  type: boolean
+                language:
+                  type: string
+            accountStatus:
+              type: string
+              enum: [active, suspended, deleted]
+
+    UserSettings:
+      type: object
+      properties:
+        notifications:
+          type: object
+          properties:
+            push:
+              type: boolean
+            email:
+              type: boolean
+            sms:
+              type: boolean
+            bingoReminders:
+              type: boolean
+            passAlerts:
+              type: boolean
+        privacy:
+          type: object
+          properties:
+            profileVisibility:
+              type: string
+              enum: [public, private]
+            showStats:
+              type: boolean
+            dataSharing:
+              type: boolean
+        language:
+          type: string
+        theme:
+          type: string
+          enum: [light, dark, auto]
+
+    BingoCard:
+      type: object
+      properties:
+        cardId:
+          type: string
+          example: "card_week_46_2025"
+        weekNumber:
+          type: number
+          example: 46
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        location:
+          type: string
+          example: "mumbai"
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/BingoProduct'
+        totalCredits:
+          type: number
+        scannedCount:
+          type: number
+        completionBonus:
+          type: number
+        isComplete:
+          type: boolean
+
+    BingoProduct:
+      type: object
+      properties:
+        id:
+          type: string
+        sku:
+          type: string
+        position:
+          type: number
+          minimum: 0
+          maximum: 8
+        name:
+          type: string
+        category:
+          type: string
+        brandLogo:
+          type: string
+        image3D:
+          type: string
+        plasticType:
+          type: string
+        description:
+          type: string
+        recyclable:
+          type: boolean
+        scannedAt:
+          type: string
+          format: date-time
+        credits:
+          type: number
+
+    BingoCardSummary:
+      type: object
+      properties:
+        cardId:
+          type: string
+        weekNumber:
+          type: number
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        location:
+          type: string
+        scannedCount:
+          type: number
+        totalProducts:
+          type: number
+        isComplete:
+          type: boolean
+        creditsEarned:
+          type: number
+        completedAt:
+          type: string
+          format: date-time
+
+    Achievement:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        icon:
+          type: string
+        unlockedAt:
+          type: string
+          format: date-time
+
+    RedemptionOption:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [upi, bank, voucher, donation]
+        name:
+          type: string
+        description:
+          type: string
+        minCredits:
+          type: number
+        maxCredits:
+          type: number
+        fee:
+          type: number
+        icon:
+          type: string
+        enabled:
+          type: boolean
+        processingTime:
+          type: string
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [earned, redeemed, bonus, refund]
+        amount:
+          type: number
+        description:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [completed, pending, failed]
+        relatedTo:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [bingo_scan, redemption, referral]
+            id:
+              type: string
+
+    EarningOpportunity:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        potentialCredits:
+          type: number
+        action:
+          type: string
+        actionUrl:
+          type: string
+        icon:
+          type: string
+        priority:
+          type: number
+
+    Partner:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        logo:
+          type: string
+        coverImage:
+          type: string
+        rating:
+          type: number
+        reviewCount:
+          type: number
+        distance:
+          type: number
+        location:
+          type: object
+          properties:
+            address:
+              type: string
+            city:
+              type: string
+            lat:
+              type: number
+            lng:
+              type: number
+        openingHours:
+          type: object
+          properties:
+            open:
+              type: string
+            close:
+              type: string
+            timezone:
+              type: string
+        isOpen:
+          type: boolean
+        availableItems:
+          type: number
+        tags:
+          type: array
+          items:
+            type: string
+
+    InventoryItem:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [surprise_bag, specific_item]
+        name:
+          type: string
+        description:
+          type: string
+        originalPrice:
+          type: number
+        discountedPrice:
+          type: number
+        savingsPercent:
+          type: number
+        quantity:
+          type: number
+        availableFrom:
+          type: string
+        availableUntil:
+          type: string
+        image:
+          type: string
+        estimatedValue:
+          type: string
+        contents:
+          type: array
+          items:
+            type: string
+        dietaryInfo:
+          type: array
+          items:
+            type: string
+
+    Reservation:
+      type: object
+      properties:
+        success:
+          type: boolean
+        reservationId:
+          type: string
+        partnerId:
+          type: string
+        partnerName:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId:
+                type: string
+              name:
+                type: string
+              quantity:
+                type: number
+              price:
+                type: number
+        totalAmount:
+          type: number
+        creditsUsed:
+          type: number
+        pickupCode:
+          type: string
+        pickupTime:
+          type: string
+          format: date-time
+        pickupWindow:
+          type: string
+        pickupAddress:
+          type: string
+        pickupInstructions:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        cancellationDeadline:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [confirmed, pending_payment]
+
+    ReservationSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        partnerId:
+          type: string
+        partnerName:
+          type: string
+        partnerLogo:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              quantity:
+                type: number
+              price:
+                type: number
+        pickupCode:
+          type: string
+        pickupTime:
+          type: string
+          format: date-time
+        pickupWindow:
+          type: string
+        pickupAddress:
+          type: string
+        totalAmount:
+          type: number
+        creditsUsed:
+          type: number
+        status:
+          type: string
+          enum: [confirmed, picked_up, cancelled, expired]
+        createdAt:
+          type: string
+          format: date-time
+        pickedUpAt:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+        requestId:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Bad request - validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized - invalid or missing token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "UNAUTHORIZED"
+            message: "Invalid or expired token"
+            timestamp: "2025-11-12T10:30:00Z"
+            requestId: "req_abc123"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+security:
+  - BearerAuth: []
