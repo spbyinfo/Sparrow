@@ -155,4 +155,4 @@ Proprietary - Internal Sparrow Project
 
 ---
 
-**Built with ❤️ for sustainable management in Vancouver** 🇮🇳
+**Built with ❤️ for sustainable management in Vancouver** 
