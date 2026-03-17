@@ -1,7 +1,7 @@
 {
   "name": "sparrow-app",
   "version": "1.0.0",
-  "description": "Sparrow - Gamified waste collection app with bingo-style engagement",
+  "description": "Sparrow - Gamified app with bingo-style engagement",
   "type": "module",
   "scripts": {
     "dev": "vite",
