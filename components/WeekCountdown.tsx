@@ -1,32 +1,35 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Calendar } from 'lucide-react';
 
 export function WeekCountdown() {
   const [timeLeft, setTimeLeft] = useState('');
 
   useEffect(() => {
-    const updateCountdown = () => {
+    const calculateTimeLeft = () => {
       const now = new Date();
-      const sunday = new Date(now);
-      sunday.setDate(now.getDate() + (7 - now.getDay()));
-      sunday.setHours(23, 59, 59, 999);
-      const diff = sunday.getTime() - now.getTime();
+      const nextSunday = new Date(now);
+      const currentDay = now.getDay();
+      const daysUntilSunday = currentDay === 0 ? 7 : 7 - currentDay;
+      nextSunday.setDate(now.getDate() + daysUntilSunday);
+      nextSunday.setHours(23, 59, 59, 999);
+      const diff = nextSunday.getTime() - now.getTime();
+      if (diff <= 0) return 'Resetting...';
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      setTimeLeft(`${days}d ${hours}h left`);
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      if (days > 0) return `Resets in ${days}d ${hours}h ${minutes}m`;
+      else if (hours > 0) return `Resets in ${hours}h ${minutes}m`;
+      else return `Resets in ${minutes}m`;
     };
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 60000);
+    setTimeLeft(calculateTimeLeft());
+    const interval = setInterval(() => { setTimeLeft(calculateTimeLeft()); }, 60000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div>
-      <h2 style={{ fontSize: '16px', fontWeight: '700', letterSpacing: '-0.01em', marginBottom: '4px' }}>This Week's Bingo</h2>
-      <div className="flex items-center justify-center gap-2">
-        <Calendar className="w-4 h-4 text-primary" />
-        <p className="text-sm text-muted-foreground" style={{ fontWeight: '600' }}>{timeLeft}</p>
-      </div>
+    <div className="inline-flex items-center gap-1.5 text-sm px-4 py-1.5 rounded-[0.8rem_0.3rem_0.8rem_0.3rem] bg-primary text-white shadow-[2px_2px_0px_rgba(255,153,51,0.3)]">
+      <Calendar className="w-3.5 h-3.5" />
+      <span>{timeLeft}</span>
     </div>
   );
 }
