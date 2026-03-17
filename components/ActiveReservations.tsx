@@ -1,0 +1,12 @@
+import { useState } from 'react';
+import { Sparkles, Calendar } from 'lucide-react';
+import { ActiveReservationCard, ActiveReservation } from './ActiveReservationCard';
+
+interface ActiveReservationsProps { reservations: ActiveReservation[]; onComplete: (reservationId: string, completionCode: string) => void; }
+
+export function ActiveReservations({ reservations, onComplete }: ActiveReservationsProps) {
+  const activeReservations = reservations.filter(r => r.status === 'confirmed');
+  const completedReservations = reservations.filter(r => r.status === 'completed');
+
+  return (<div className="min-h-screen bg-[#faf8f3] pb-24"><div className="sticky top-0 z-20 bg-white border-b border-border"><div className="px-4 py-4"><h1 style={{ fontSize: '24px', fontWeight: '700' }}>My Reservations</h1><p className="text-sm text-muted-foreground mt-1">Active bookings & completed services</p></div></div>{activeReservations.length > 0 && (<div className="px-4 py-6"><div className="flex items-center gap-2 mb-4"><Calendar className="w-5 h-5 text-[#ff9933]" /><h2 style={{ fontSize: '18px', fontWeight: '700' }}>Active Reservations</h2><span className="px-2 py-0.5 bg-[#ff9933] text-white rounded-full text-xs" style={{ fontWeight: '600' }}>{activeReservations.length}</span></div><div className="space-y-4">{activeReservations.map((reservation) => (<ActiveReservationCard key={reservation.id} reservation={reservation} onComplete={onComplete} />))}</div></div>)}{completedReservations.length > 0 && (<div className="px-4 py-6"><div className="flex items-center gap-2 mb-4"><Sparkles className="w-5 h-5 text-[#059669]" /><h2 style={{ fontSize: '18px', fontWeight: '700' }}>Completed Services</h2><span className="px-2 py-0.5 bg-[#059669] text-white rounded-full text-xs" style={{ fontWeight: '600' }}>{completedReservations.length}</span></div><div className="space-y-4">{completedReservations.map((reservation) => (<ActiveReservationCard key={reservation.id} reservation={reservation} onComplete={onComplete} />))}</div></div>)}{reservations.length === 0 && (<div className="flex flex-col items-center justify-center px-4 py-16"><div className="w-24 h-24 rounded-full bg-[#faf8f3] border-2 border-dashed border-border flex items-center justify-center mb-4"><Calendar className="w-12 h-12 text-muted-foreground" /></div><h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>No Reservations Yet</h3><p className="text-sm text-muted-foreground text-center max-w-xs">Book your first service from the MyPass marketplace to see it here</p></div>)}</div>);
+}
