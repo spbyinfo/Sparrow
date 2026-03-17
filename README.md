@@ -1,6 +1,6 @@
-# 🐦 Sparrow - Gamified Waste Collection App
+# 🐦 Sparrow 
 
-A mobile-first web app that gamifies waste collection in India through a weekly bingo game. Users scan product SKUs, earn green credits, and book surprise services at partner venues.
+Users scan product SKUs, earn green credits, and book surprise services at partner venues. A mobile-first web app that gamifies waste collection in India through a weekly bingo game.
 
 ## 🚀 Quick Start
 
@@ -76,7 +76,7 @@ sparrow-app/
 │   ├── api.ts                # API utilities
 │   ├── environment.ts        # Multi-env config
 │   └── supabase/             # Supabase client
-├── supabase/
+├── supabase/ (Optional choice)
 │   └── functions/server/     # Edge functions
 └── guidelines/
     └── Guidelines.md         # Development guidelines
@@ -111,12 +111,6 @@ See `/lib/sparrow-dsl/README.md` for full documentation.
 - ✅ **Inventory Management**: Real-time availability tracking
 - ✅ **Partner Integration**: TooGoodToGo-style surprise services
 
-## 🚀 Deploy to Vercel
-
-### One-Click Deploy
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone)
-
 ### Manual Deploy
 
 1. **Push to GitHub**:
@@ -143,11 +137,8 @@ See `/lib/sparrow-dsl/README.md` for full documentation.
 ## 📱 Access on Mobile
 
 Once deployed:
-1. Open the Vercel URL on your phone
-2. **iPhone**: Safari → Share → "Add to Home Screen"
-3. **Android**: Chrome → Menu → "Add to Home Screen"
 
-The app will open full-screen like a native app!
+The app will open full-screen as a native app!
 
 ## 📖 Documentation
 
@@ -164,4 +155,4 @@ Proprietary - Internal Sparrow Project
 
 ---
 
-**Built with ❤️ for sustainable waste management in India** 🇮🇳
+**Built with ❤️ for sustainable management in Vancouver** 🇮🇳
